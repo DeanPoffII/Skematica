@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Schema Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-area::before {
+            content: '📁';
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-text {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls {
+            padding: 30px 40px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .schema-container {
+            padding: 40px;
+            min-height: 400px;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        .schema-canvas {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            position: relative;
+            overflow: auto;
+            cursor: grab;
+        }
+
+        .schema-canvas:active {
+            cursor: grabbing;
+        }
+
+        .table-card {
+            position: absolute;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            min-width: 250px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .table-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: move;
+            position: relative;
+        }
+
+        .table-header::after {
+            content: '⋮⋮';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.7;
+        }
+
+        .table-fields {
+            padding: 0;
+        }
+
+        .field-row {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .field-row:hover {
+            background: #f8f9fa;
+        }
+
+        .field-row:last-child {
+            border-bottom: none;
+        }
+
+        .field-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .field-type {
+            font-size: 0.8rem;
+            color: #666;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+
+        .empty-state::before {
+            content: '📊';
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .connection-line {
+            position: absolute;
+            background: #667eea;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        .sample-data {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-section, .schema-container {
+                padding: 20px;
+            }
+            
+            .controls {
+                padding: 20px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .zoom-controls {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CRM Schema Visualizer</h1>
+            <p>Transform your CRM JSON data into beautiful visual database schemas</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-text">Drop your JSON file here or click to browse</div>
+                <div class="upload-subtext">Supports JSON files from CRM systems</div>
+            </div>
+            <input type="file" id="fileInput" accept=".json" />
+            
+            <div class="sample-data">
+                <strong>Expected JSON format:</strong><br>
+                <code>
+                {
+                  "tables": [
+                    {
+                      "name": "customers",
+                      "fields": [
+                        {"name": "id", "type": "integer", "primary": true},
+                        {"name": "name", "type": "string"},
+                        {"name": "email", "type": "string"}
+                      ]
+                    }
+                  ]
+                }
+                </code>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="loadSampleData()">
+                📋 Load Sample Data
+            </button>
+            <button class="btn btn-secondary" onclick="exportSchema()">
+                💾 Export Schema
+            </button>
+            <button class="btn btn-secondary" onclick="clearSchema()">
+                🗑️ Clear
+            </button>
+            <div class="zoom-controls">
+                <button class="btn btn-secondary" onclick="zoomOut()">➖</button>
+                <button class="btn btn-secondary" onclick="resetZoom()">🔍</button>
+                <button class="btn btn-secondary" onclick="zoomIn()">➕</button>
+            </div>
+        </div>
+
+        <div class="schema-container">
+            <div class="schema-canvas" id="schemaCanvas">
+                <div class="empty-state">
+                    <div>Upload a JSON file to visualize your CRM schema</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSchema = null;
+        let zoomLevel = 1;
+        let isDragging = false;
+        let dragElement = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        
+        // Drag and drop for file upload
+        const uploadArea = document.querySelector('.upload-area');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#764ba2';
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#667eea';
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#667eea';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function processFile(file) {
+            if (!file.type.includes('json')) {
+                showError('Please select a valid JSON file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    currentSchema = processJsonData(jsonData);
+                    renderSchema(currentSchema);
+                    showSuccess('Schema loaded successfully!');
+                } catch (error) {
+                    showError('Invalid JSON format: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processJsonData(data) {
+            // Handle different JSON structures
+            let tables = [];
+            
+            if (data.tables && Array.isArray(data.tables)) {
+                tables = data.tables;
+            } else if (Array.isArray(data)) {
+                tables = data;
+            } else if (typeof data === 'object') {
+                // Try to infer structure from object keys
+                tables = Object.keys(data).map(key => {
+                    const value = data[key];
+                    if (Array.isArray(value) && value.length > 0) {
+                        const fields = Object.keys(value[0]).map(fieldName => ({
+                            name: fieldName,
+                            type: inferType(value[0][fieldName])
+                        }));
+                        return { name: key, fields: fields };
+                    }
+                    return { name: key, fields: [] };
+                });
+            }
+
+            return { tables: tables };
+        }
+
+        function inferType(value) {
+            if (typeof value === 'number') return Number.isInteger(value) ? 'integer' : 'float';
+            if (typeof value === 'boolean') return 'boolean';
+            if (value instanceof Date) return 'datetime';
+            if (typeof value === 'string') {
+                if (value.match(/^\d{4}-\d{2}-\d{2}/)) return 'date';
+                if (value.includes('@')) return 'email';
+                return 'string';
+            }
+            return 'text';
+        }
+
+        function renderSchema(schema) {
+            const canvas = document.getElementById('schemaCanvas');
+            canvas.innerHTML = '';
+
+            if (!schema || !schema.tables || schema.tables.length === 0) {
+                canvas.innerHTML = '<div class="empty-state"><div>No tables found in the provided JSON</div></div>';
+                return;
+            }
+
+            const tables = schema.tables;
+            const tableWidth = 280;
+            const tableSpacing = 50;
+            const tablesPerRow = Math.floor((canvas.clientWidth - 40) / (tableWidth + tableSpacing)) || 1;
+
+            tables.forEach((table, index) => {
+                const row = Math.floor(index / tablesPerRow);
+                const col = index % tablesPerRow;
+                
+                const x = 20 + col * (tableWidth + tableSpacing);
+                const y = 20 + row * 300;
+
+                const tableElement = createTableElement(table, x, y);
+                canvas.appendChild(tableElement);
+            });
+        }
+
+        function createTableElement(table, x, y) {
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'table-card';
+            tableDiv.style.left = x + 'px';
+            tableDiv.style.top = y + 'px';
+            tableDiv.style.transform = `scale(${zoomLevel})`;
+
+            const header = document.createElement('div');
+            header.className = 'table-header';
+            header.textContent = table.name || 'Unnamed Table';
+            
+            const fieldsDiv = document.createElement('div');
+            fieldsDiv.className = 'table-fields';
+
+            if (table.fields && table.fields.length > 0) {
+                table.fields.forEach(field => {
+                    const fieldRow = document.createElement('div');
+                    fieldRow.className = 'field-row';
+
+                    const fieldName = document.createElement('span');
+                    fieldName.className = 'field-name';
+                    fieldName.textContent = field.name || 'unnamed';
+
+                    const fieldType = document.createElement('span');
+                    fieldType.className = 'field-type';
+                    fieldType.textContent = field.type || 'unknown';
+
+                    fieldRow.appendChild(fieldName);
+                    fieldRow.appendChild(fieldType);
+                    fieldsDiv.appendChild(fieldRow);
+                });
+            } else {
+                const emptyRow = document.createElement('div');
+                emptyRow.className = 'field-row';
+                emptyRow.innerHTML = '<span class="field-name" style="color: #999; font-style: italic;">No fields defined</span>';
+                fieldsDiv.appendChild(emptyRow);
+            }
+
+            tableDiv.appendChild(header);
+            tableDiv.appendChild(fieldsDiv);
+
+            // Make tables draggable
+            makeTableDraggable(tableDiv);
+
+            return tableDiv;
+        }
+
+        function makeTableDraggable(element) {
+            const header = element.querySelector('.table-header');
+            
+            header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragElement = element;
+                const rect = element.getBoundingClientRect();
+                dragOffset.x = e.clientX - rect.left;
+                dragOffset.y = e.clientY - rect.top;
+                element.style.zIndex = '1000';
+                e.preventDefault();
+            });
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && dragElement) {
+                const canvas = document.getElementById('schemaCanvas');
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                const x = e.clientX - canvasRect.left - dragOffset.x;
+                const y = e.clientY - canvasRect.top - dragOffset.y;
+                
+                dragElement.style.left = Math.max(0, x) + 'px';
+                dragElement.style.top = Math.max(0, y) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging && dragElement) {
+                dragElement.style.zIndex = '';
+                isDragging = false;
+                dragElement = null;
+            }
+        });
+
+        function loadSampleData() {
+            const sampleData = {
+                tables: [
+                    {
+                        name: "customers",
+                        fields: [
+                            { name: "id", type: "integer" },
+                            { name: "first_name", type: "string" },
+                            { name: "last_name", type: "string" },
+                            { name: "email", type: "string" },
+                            { name: "phone", type: "string" },
+                            { name: "created_at", type: "datetime" }
+                        ]
+                    },
+                    {
+                        name: "orders",
+                        fields: [
+                            { name: "id", type: "integer" },
+                            { name: "customer_id", type: "integer" },
+                            { name: "order_date", type: "date" },
+                            { name: "total_amount", type: "decimal" },
+                            { name: "status", type: "string" }
+                        ]
+                    },
+                    {
+                        name: "products",
+                        fields: [
+                            { name: "id", type: "integer" },
+                            { name: "name", type: "string" },
+                            { name: "description", type: "text" },
+                            { name: "price", type: "decimal" },
+                            { name: "category", type: "string" }
+                        ]
+                    },
+                    {
+                        name: "order_items",
+                        fields: [
+                            { name: "id", type: "integer" },
+                            { name: "order_id", type: "integer" },
+                            { name: "product_id", type: "integer" },
+                            { name: "quantity", type: "integer" },
+                            { name: "unit_price", type: "decimal" }
+                        ]
+                    }
+                ]
+            };
+            
+            currentSchema = sampleData;
+            renderSchema(currentSchema);
+            showSuccess('Sample CRM schema loaded!');
+        }
+
+        function exportSchema() {
+            if (!currentSchema) {
+                showError('No schema to export. Please load a JSON file first.');
+                return;
+            }
+
+            const dataStr = JSON.stringify(currentSchema, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'crm_schema.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            showSuccess('Schema exported successfully!');
+        }
+
+        function clearSchema() {
+            currentSchema = null;
+            const canvas = document.getElementById('schemaCanvas');
+            canvas.innerHTML = '<div class="empty-state"><div>Upload a JSON file to visualize your CRM schema</div></div>';
+            document.getElementById('fileInput').value = '';
+        }
+
+        function zoomIn() {
+            zoomLevel = Math.min(zoomLevel + 0.1, 2);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
+            updateZoom();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            const tables = document.querySelectorAll('.table-card');
+            tables.forEach(table => {
+                table.style.transform = `scale(${zoomLevel})`;
+            });
+        }
+
+        function showError(message) {
+            const existingMessages = document.querySelectorAll('.error-message, .success-message');
+            existingMessages.forEach(msg => msg.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            const container = document.querySelector('.schema-container');
+            container.insertBefore(errorDiv, container.firstChild);
+            
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function showSuccess(message) {
+            const existingMessages = document.querySelectorAll('.error-message, .success-message');
+            existingMessages.forEach(msg => msg.remove());
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            
+            const container = document.querySelector('.schema-container');
+            container.insertBefore(successDiv, container.firstChild);
+            
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
